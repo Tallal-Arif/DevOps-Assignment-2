@@ -1,0 +1,101 @@
+Assignment 2: Containerization and Deployment using 
+Docker & Kubernetes 
+ 
+Assignment Overview 
+Before Starting 
+• Form a group of 2 students. 
+• Maintain a clean and professional project folder structure . 
+• Divide the tasks equally among team members . 
+• Document each step performed during the assignment.  
+• Ensure all configurations and files are properly organized.  
+ 
+Objective 
+Students will design and deploy a containerized application  using: 
+• Docker 
+• Docker Compose 
+• Kubernetes 
+ 
+Project Requirements 
+Select any simple web application which must have following:  
+• Frontend service 
+• Backend service 
+• Database service (MongoDB / MySQL / PostgreSQL) 
+Students must:  
+• Containerize the application using Docker 
+• Run multiple containers using Docker Compose 
+• Deploy the application using Kubernetes YAML manifests 
+• Configure persistent storage  
+• Implement application scaling  
+ 
+TASK 1: Docker Containerization 
+Containerize the application using Docker.  
+Requirements: 
+• Create a Dockerfile for the application.  
+• Build a Docker image. 
+• Run the container locally.  
+• V erify that the application runs correctly inside the container.  
+ 
+TASK 2: Multi-Container Setup using Docker Compose 
+Create a Docker Compose configuration to run multiple services.  
+The compose configuration should include:  
+• Frontend container 
+• Backend container 
+• Database container 
+Requirements: 
+• Define multiple services  
+• Configure container networking  
+• Use environment variables where necessary  
+• Map container ports to host ports  
+ 
+TASK 3: Kubernetes Deployment 
+Deploy the containerized application on a Kubernetes cluster . 
+Students must create Kubernetes Y AML files for: 
+Deployment 
+Requirements: 
+• Deploy frontend and backend applications  
+• Use at least 3 replicas 
+• Configure container image and ports  
+ 
+TASK 4: Persistent Storage 
+Deploy the database with persistent storage . 
+Requirements: 
+Create: 
+• Persistent Volume (PV) 
+• Persistent Volume Claim (PVC) 
+Mount the volume inside the database container.  
+ 
+TASK 5: Application Scaling 
+Implement Horizontal Pod Autoscaling (HPA). 
+Requirements: 
+• Minimum Pods: 2 
+• Maximum Pods: 5 
+• CPU Utilization Target: 70% 
+ 
+TASK 6: Documentation 
+Create a README.md file containing:  
+• Project overview 
+• Tools and technologies used 
+• Application architecture  
+• Docker build and run instructions  
+• Docker Compose setup 
+• Kubernetes deployment steps  
+• Scaling configuration  
+ 
+Submission Guidelines  
+Students must submit  complete project folder on git which has following and submits link of 
+repo. 
+o Docker configuration files.  
+o Kubernetes Y AML files. 
+o Screenshots showing: 
+1. Running Docker containers 
+2. Running Kubernetes pods 
+3. Services and scaling configuration.  
+ 
+Evaluation Criteria 
+Criteria Weight 
+Docker Containerization  25% 
+Docker Compose Configuration  20% 
+Kubernetes Deployment 30% 
+Persistent Storage & Scaling  15% 
+Documentation & Project Structure  10% 
+ 

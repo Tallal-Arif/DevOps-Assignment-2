@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DevOps Assignment 2 - Items App</title>
+    <style>
+        body { font-family: 'Inter', 'Segoe UI', sans-serif; background: #eef2f5; margin: 0; padding: 20px; color: #2c3e50; }
+        .container { max-width: 700px; margin: 40px auto; background: #fff; padding: 30px; border-radius: 12px; box-shadow: 0 10px 25px rgba(0,0,0,0.05); }
+        h1 { text-align: center; color: #34495e; font-weight: 600; margin-bottom: 10px; }
+        .status { text-align: center; font-size: 14px; font-weight: 500; margin-bottom: 25px; padding: 10px; border-radius: 6px; }
+        .status.connected { background: #d4edda; color: #155724; }
+        .status.disconnected { background: #f8d7da; color: #721c24; }
+        .status.loading { background: #e2e3e5; color: #383d41; }
+        
+        .form-group { margin-bottom: 20px; }
+        input, textarea { width: 100%; padding: 12px 15px; border: 1px solid #ced4da; border-radius: 8px; box-sizing: border-box; font-family: inherit; font-size: 15px; transition: border-color 0.2s; }
+        input:focus, textarea:focus { outline: none; border-color: #80bdff; box-shadow: 0 0 0 3px rgba(0,123,255,0.1); }
+        textarea { resize: vertical; min-height: 100px; }
+        
+        button { background: #007bff; color: white; border: none; padding: 12px 24px; cursor: pointer; border-radius: 8px; font-size: 16px; font-weight: 600; width: 100%; transition: background 0.2s; }
+        button:hover { background: #0069d9; }
+        
+        .items-list { margin-top: 40px; }
+        .items-title { border-bottom: 2px solid #eef2f5; padding-bottom: 10px; margin-bottom: 20px; color: #34495e; }
+        .item { padding: 20px; border: 1px solid #eef2f5; border-radius: 8px; margin-bottom: 15px; background: #fdfdfd; transition: transform 0.2s; }
+        .item:hover { transform: translateY(-2px); box-shadow: 0 4px 10px rgba(0,0,0,0.03); }
+        .item h3 { margin: 0 0 8px 0; color: #2c3e50; font-size: 18px; }
+        .item p { margin: 0; color: #6c757d; line-height: 1.5; }
+        .item .date { font-size: 12px; color: #adb5bd; margin-top: 10px; display: block; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Item Manager</h1>
+        <div id="status" class="status loading">Connecting to backend...</div>
+        
+        <form id="itemForm">
+            <div class="form-group">
+                <input type="text" id="name" placeholder="Item Name" required>
+            </div>
+            <div class="form-group">
+                <textarea id="description" placeholder="Item Description" required></textarea>
+            </div>
+            <button type="submit" id="submitBtn">Add Item</button>
+        </form>
+
+        <div class="items-list">
+            <h2 class="items-title">Recent Items</h2>
+            <div id="itemsList">
+                <div style="text-align: center; color: #6c757d; padding: 20px;">No items found.</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_URL = '/api';
+        const statusEl = document.getElementById('status');
+        const itemsListEl = document.getElementById('itemsList');
+        const formEl = document.getElementById('itemForm');
+        const submitBtn = document.getElementById('submitBtn');
+
+        function updateStatus(state, message) {
+            statusEl.className = `status ${state}`;
+            statusEl.innerText = message;
+        }
+
+        async function fetchItems() {
+            try {
+                const response = await fetch(`${API_URL}/items`);
+                if (response.ok) {
+                    const items = await response.json();
+                    updateStatus('connected', 'Connected to Backend & Database');
+                    renderItems(items);
+                } else {
+                    throw new Error('Server returned ' + response.status);
+                }
+            } catch (error) {
+                console.error('Fetch error:', error);
+                updateStatus('disconnected', 'Backend disconnected or Database down');
+            }
+        }
+
+        function renderItems(items) {
+            if (!items || items.length === 0) {
+                itemsListEl.innerHTML = '<div style="text-align: center; color: #6c757d; padding: 20px;">No items found. Add one above!</div>';
+                return;
+            }
+            
+            itemsListEl.innerHTML = '';
+            items.forEach(item => {
+                const div = document.createElement('div');
+                div.className = 'item';
+                const dateOpts = { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute:'2-digit' };
+                const dateStr = item.date ? new Date(item.date).toLocaleDateString(undefined, dateOpts) : '';
+                
+                div.innerHTML = `
+                    <h3>${escapeHtml(item.name)}</h3>
+                    <p>${escapeHtml(item.description)}</p>
+                    <span class="date">${dateStr}</span>
+                `;
+                itemsListEl.appendChild(div);
+            });
+        }
+
+        function escapeHtml(unsafe) {
+            if (!unsafe) return '';
+            return unsafe
+                 .replace(/&/g, "&amp;")
+                 .replace(/</g, "&lt;")
+                 .replace(/>/g, "&gt;")
+                 .replace(/"/g, "&quot;")
+                 .replace(/'/g, "&#039;");
+        }
+
+        formEl.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const name = document.getElementById('name').value;
+            const description = document.getElementById('description').value;
+
+            submitBtn.disabled = true;
+            submitBtn.innerText = 'Adding...';
+
+            try {
+                const response = await fetch(`${API_URL}/items`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ name, description })
+                });
+
+                if (response.ok) {
+                    document.getElementById('name').value = '';
+                    document.getElementById('description').value = '';
+                    fetchItems();
+                } else {
+                    const err = await response.json();
+                    alert('Error: ' + (err.error || 'Failed to add item'));
+                }
+            } catch (error) {
+                console.error('Error adding item:', error);
+                alert('Connection error. Is the backend running?');
+            } finally {
+                submitBtn.disabled = false;
+                submitBtn.innerText = 'Add Item';
+            }
+        });
+
+        // Initial load
+        fetchItems();
+    </script>
+</body>
+</html>
