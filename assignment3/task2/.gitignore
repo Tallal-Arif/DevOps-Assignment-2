@@ -1,0 +1,9 @@
+# Terraform directories and sensitive files
+.terraform/
+terraform.tfstate
+terraform.tfstate.backup
+.terraform.tfstate.lock.info
+.terraform.lock.hcl
+
+# SSH Private Key - NEVER commit this
+mykey
