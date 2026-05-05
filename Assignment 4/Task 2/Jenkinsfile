@@ -1,0 +1,79 @@
+pipeline {
+    agent {
+        label 'linux-agent'
+    }
+    
+    environment {
+        SLACK_WEBHOOK = credentials('slack-webhook')
+    }
+
+    stages {
+        stage('Checkout') {
+            steps {
+                checkout scm
+            }
+        }
+
+        stage('Build') {
+            steps {
+                dir('Assignment 4/Task 2/app') {
+                    sh 'npm install'
+                }
+            }
+        }
+
+        stage('Test') {
+            parallel {
+                stage('Unit Tests') {
+                    steps {
+                        dir('Assignment 4/Task 2/app') {
+                            sh 'npm run test:unit'
+                        }
+                    }
+                    post {
+                        always {
+                            junit 'Assignment 4/Task 2/app/junit.xml' // Assumes jest-junit configuration
+                        }
+                    }
+                }
+                stage('Integration Tests') {
+                    steps {
+                        dir('Assignment 4/Task 2/app') {
+                            sh 'npm run test:integration'
+                        }
+                    }
+                }
+            }
+        }
+
+        stage('Package') {
+            steps {
+                echo 'Packaging application...'
+                // Simple tarball for illustration
+                sh 'tar -czf app.tar.gz Assignment\\ 4/Task\\ 2/app/*'
+            }
+        }
+
+        stage('Deploy') {
+            steps {
+                echo 'Deploying application...'
+            }
+        }
+    }
+
+    post {
+        always {
+            echo 'Archiving artifacts...'
+            archiveArtifacts artifacts: 'app.tar.gz', allowEmptyArchive: true
+        }
+        success {
+            echo 'Pipeline succeeded.'
+            // Using a simple curl to send slack message to simulate webhook notification
+            // sh "curl -X POST -H 'Content-type: application/json' --data '{\"text\":\"Build SUCCESS: ${env.JOB_NAME} - ${env.BUILD_URL}\"}' ${SLACK_WEBHOOK}"
+        }
+        failure {
+            echo 'Pipeline failed.'
+            // sh "curl -X POST -H 'Content-type: application/json' --data '{\"text\":\"Build FAILED: ${env.JOB_NAME} - ${env.BUILD_URL}\"}' ${SLACK_WEBHOOK}"
+        }
+    }
+}

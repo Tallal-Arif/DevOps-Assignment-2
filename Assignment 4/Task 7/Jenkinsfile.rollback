@@ -1,0 +1,38 @@
+pipeline {
+    agent {
+        label 'linux-agent'
+    }
+
+    environment {
+        AWS_REGION     = 'us-east-1'
+        ALB_LISTENER_ARN = "arn:aws:elasticloadbalancing:us-east-1:123456789012:listener/app/alb-id/listener-id"
+        TG_BLUE_ARN    = "arn:aws:elasticloadbalancing:us-east-1:123456789012:targetgroup/app-tg-blue/tg-blue-id"
+        TG_GREEN_ARN   = "arn:aws:elasticloadbalancing:us-east-1:123456789012:targetgroup/app-tg-green/tg-green-id"
+    }
+
+    stages {
+        stage('Manual Rollback') {
+            steps {
+                script {
+                    input message: "Proceed with manual ALB rollback?", ok: "Rollback"
+                    
+                    def listenerJson = sh(script: "aws elbv2 describe-listeners --listener-arns ${ALB_LISTENER_ARN} --output json", returnStdout: true)
+                    def liveColor = listenerJson.contains("app-tg-blue") ? "blue" : "green"
+                    def rollbackColor = liveColor == "blue" ? "green" : "blue"
+                    def rollbackTgArn = rollbackColor == "blue" ? TG_BLUE_ARN : TG_GREEN_ARN
+                    
+                    echo "Current live is ${liveColor}. Rolling back traffic to ${rollbackColor}..."
+                    
+                    sh """
+                    aws elbv2 modify-listener \\
+                        --listener-arn ${ALB_LISTENER_ARN} \\
+                        --default-actions Type=forward,TargetGroupArn=${rollbackTgArn} \\
+                        --region ${AWS_REGION}
+                    """
+                    
+                    echo "Rollback to ${rollbackColor} complete."
+                }
+            }
+        }
+    }
+}

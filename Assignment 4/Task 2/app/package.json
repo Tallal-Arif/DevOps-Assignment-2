@@ -1,0 +1,18 @@
+{
+  "name": "sample-node-app",
+  "version": "1.0.0",
+  "description": "Sample Node.js application for DevOps Assignment 4",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "test:unit": "jest tests/unit.test.js --coverage",
+    "test:integration": "jest tests/integration.test.js"
+  },
+  "dependencies": {
+    "express": "^4.18.2"
+  },
+  "devDependencies": {
+    "jest": "^29.7.0",
+    "supertest": "^6.3.3"
+  }
+}

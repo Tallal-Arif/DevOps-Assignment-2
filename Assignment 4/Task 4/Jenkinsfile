@@ -1,0 +1,91 @@
+@Library('your-lib@main') _
+
+pipeline {
+    agent {
+        label 'linux-agent'
+    }
+    
+    environment {
+        SLACK_WEBHOOK = credentials('slack-webhook')
+    }
+
+    stages {
+        stage('Checkout') {
+            steps {
+                checkout scm
+            }
+        }
+
+        stage('Build') {
+            steps {
+                dir('Assignment 4/Task 2/app') {
+                    sh 'npm install'
+                }
+            }
+        }
+
+        stage('Static Analysis') {
+            steps {
+                dir('Assignment 4/Task 2/app') {
+                    runSonarScan(projectKey: 'sample-node-app', sources: '.')
+                }
+            }
+        }
+
+        stage('Test') {
+            parallel {
+                stage('Unit Tests') {
+                    steps {
+                        dir('Assignment 4/Task 2/app') {
+                            sh 'npm run test:unit'
+                        }
+                    }
+                    post {
+                        always {
+                            junit 'Assignment 4/Task 2/app/junit.xml'
+                        }
+                    }
+                }
+                stage('Integration Tests') {
+                    steps {
+                        dir('Assignment 4/Task 2/app') {
+                            sh 'npm run test:integration'
+                        }
+                    }
+                }
+            }
+        }
+
+        stage('Package') {
+            steps {
+                echo 'Packaging application...'
+                sh 'tar -czf app.tar.gz Assignment\\ 4/Task\\ 2/app/*'
+            }
+        }
+
+        stage('Deploy') {
+            steps {
+                echo 'Deploying application...'
+            }
+        }
+    }
+
+    post {
+        always {
+            echo 'Archiving artifacts...'
+            archiveArtifacts artifacts: 'app.tar.gz', allowEmptyArchive: true
+        }
+        success {
+            notifySlack(
+                message: "Build SUCCESS: ${env.JOB_NAME} - ${env.BUILD_URL}",
+                webhookUrl: "${SLACK_WEBHOOK}"
+            )
+        }
+        failure {
+            notifySlack(
+                message: "Build FAILED: ${env.JOB_NAME} - ${env.BUILD_URL}",
+                webhookUrl: "${SLACK_WEBHOOK}"
+            )
+        }
+    }
+}

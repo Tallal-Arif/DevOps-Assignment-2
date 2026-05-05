@@ -1,0 +1,135 @@
+@Library('your-lib@main') _
+
+pipeline {
+    agent {
+        label 'linux-agent'
+    }
+    
+    environment {
+        SLACK_WEBHOOK = credentials('slack-webhook')
+        AWS_ACCOUNT_ID = '123456789012' // To be replaced with actual ID
+        AWS_REGION = 'us-east-1'
+        ECR_REPO = "${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/sample-node-app"
+        IMAGE_NAME = "sample-node-app"
+    }
+
+    stages {
+        stage('Checkout') {
+            steps {
+                checkout scm
+                script {
+                    env.GIT_SHA = sh(script: 'git rev-parse --short HEAD', returnStdout: true).trim()
+                    env.BRANCH_NAME = env.BRANCH_NAME ?: 'main' // Fallback if not Multibranch
+                }
+            }
+        }
+
+        stage('Build') {
+            steps {
+                dir('Assignment 4/Task 2/app') {
+                    sh 'npm install'
+                }
+            }
+        }
+
+        stage('Static Analysis') {
+            steps {
+                dir('Assignment 4/Task 2/app') {
+                    runSonarScan(projectKey: 'sample-node-app', sources: '.')
+                }
+            }
+        }
+
+        stage('Test') {
+            parallel {
+                stage('Unit Tests') {
+                    steps {
+                        dir('Assignment 4/Task 2/app') {
+                            sh 'npm run test:unit'
+                        }
+                    }
+                    post {
+                        always {
+                            junit 'Assignment 4/Task 2/app/junit.xml'
+                        }
+                    }
+                }
+                stage('Integration Tests') {
+                    steps {
+                        dir('Assignment 4/Task 2/app') {
+                            sh 'npm run test:integration'
+                        }
+                    }
+                }
+            }
+        }
+
+        stage('Container Build') {
+            steps {
+                dir('Assignment 4/Task 5') {
+                    // Copy app files into context for Docker build
+                    sh 'cp -r ../Task\\ 2/app/* .'
+                    sh "docker build -t ${IMAGE_NAME}:${GIT_SHA} ."
+                    sh "docker tag ${IMAGE_NAME}:${GIT_SHA} ${IMAGE_NAME}:${BRANCH_NAME}"
+                }
+            }
+        }
+
+        stage('Security Scan') {
+            steps {
+                sh """
+                trivy image --exit-code 1 \\
+                  --severity HIGH,CRITICAL \\
+                  --ignore-unfixed \\
+                  --ignorefile Assignment\\ 4/Task\\ 5/.trivyignore \\
+                  --format table \\
+                  -o trivy-report.txt \\
+                  ${IMAGE_NAME}:${GIT_SHA}
+                """
+            }
+            post {
+                always {
+                    archiveArtifacts artifacts: 'trivy-report.txt', allowEmptyArchive: true
+                }
+            }
+        }
+
+        stage('Push to ECR') {
+            steps {
+                script {
+                    // Authenticate to ECR using IAM role attached to agent
+                    sh "aws ecr get-login-password --region ${AWS_REGION} | docker login --username AWS --password-stdin ${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com"
+                    
+                    // Tag for ECR
+                    sh "docker tag ${IMAGE_NAME}:${GIT_SHA} ${ECR_REPO}:${GIT_SHA}"
+                    sh "docker tag ${IMAGE_NAME}:${BRANCH_NAME} ${ECR_REPO}:${BRANCH_NAME}"
+                    
+                    // Push
+                    sh "docker push ${ECR_REPO}:${GIT_SHA}"
+                    sh "docker push ${ECR_REPO}:${BRANCH_NAME}"
+                }
+            }
+        }
+
+        stage('Deploy') {
+            steps {
+                echo 'Deploying application...'
+            }
+        }
+    }
+
+    post {
+        success {
+            notifySlack(
+                message: "Build SUCCESS: ${env.JOB_NAME} - ${env.BUILD_URL}",
+                webhookUrl: "${SLACK_WEBHOOK}"
+            )
+        }
+        failure {
+            notifySlack(
+                message: "Build FAILED: ${env.JOB_NAME} - ${env.BUILD_URL}",
+                webhookUrl: "${SLACK_WEBHOOK}"
+            )
+        }
+    }
+}

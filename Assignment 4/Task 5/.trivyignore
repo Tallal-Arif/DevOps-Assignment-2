@@ -1,0 +1,4 @@
+# Example Trivy Ignore File
+# Ignore a specific CVE that has no fix or is a false positive
+# CVE-2023-XXXXX
+# Justification: Not using the vulnerable function in production
